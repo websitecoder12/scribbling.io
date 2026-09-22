@@ -1,0 +1,29 @@
+{
+"name": "scribbling-io",
+"version": "1.0.0",
+"private": true,
+"scripts": {
+"dev": "concurrently 'npm run dev:server' 'npm run dev:client'",
+"dev:server": "ts-node-dev --project apps/server/tsconfig.json --respawn --transpile-only apps/server/src/index.ts",
+"dev:client": "next dev apps/client"
+},
+"dependencies": {
+"express": "^4.19.2",
+"socket.io": "^4.7.5",
+"socket.io-client": "^4.7.5",
+"next": "^14.2.3",
+"react": "^18.3.1",
+"react-dom": "^18.3.1",
+"zustand": "^4.5.2",
+"lucide-react": "^0.378.0",
+"concurrently": "^8.2.2",
+"ts-node-dev": "^2.0.0",
+"typescript": "^5.4.5"
+},
+"devDependencies": {
+"@types/express": "^4.17.21",
+"@types/node": "^20.12.12",
+"@types/react": "^18.3.2",
+"@types/react-dom": "^18.3.0"
+}
+}
