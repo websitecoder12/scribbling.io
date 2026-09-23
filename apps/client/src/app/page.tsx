@@ -38,10 +38,10 @@ export default function Home() {
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    socket = io('http://localhost:4000', {
-      transports: ['websocket', 'polling'],
-      reconnectionAttempts: 5,
-    });
+   socket = io('https://humble-dollop-g49v467vqwqxfw9w7-3000.app.github.dev', {
+  transports: ['websocket', 'polling'],
+  reconnectionAttempts: 5,
+});
 
     socket.on('connect', () => {
       setIsConnected(true);
