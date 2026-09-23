@@ -1,9 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
-
-// Best practice: Define the URL outside the component 
-// so it doesn't get unnecessarily recreated on every re-render.
 const SERVER_URL = 'https://humble-dollop-g49v467vqwqxfw9w7-4000.app.github.dev';
 let socket: Socket;
 
