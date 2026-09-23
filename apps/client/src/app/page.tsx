@@ -2,126 +2,286 @@
 
 import React, { useState, useEffect } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { Press_Start_2P } from 'next/font/google';
+import Canvas from '../components/Canvas';
+import VotingGallery from '../components/VotingGallery';
+import Podium from '../components/Podium';
+
+const pixelFont = Press_Start_2P({ weight: '400', subsets: ['latin'] });
+
+interface Player {
+  id: string;
+  username: string;
+  isHost: boolean;
+  score: number;
+}
+
+interface RoomState {
+  code: string;
+  phase: 'LOBBY' | 'DRAWING' | 'VOTING' | 'RESULTS';
+  theme: string;
+  timer: number;
+  players: Record<string, Player>;
+  drawings: Record<string, string>;
+  votes: Record<string, string>;
+}
 
 let socket: Socket;
 
 export default function Home() {
+  const [view, setView] = useState<'LANDING' | 'SETUP' | 'GAME'>('LANDING');
   const [username, setUsername] = useState('');
   const [roomCodeInput, setRoomCodeInput] = useState('');
-  const [currentRoom, setCurrentRoom] = useState<any>(null);
+  const [roomState, setRoomState] = useState<RoomState | null>(null);
+  const [timer, setTimer] = useState(0);
+  const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
     socket = io('http://localhost:4000');
-    socket.on('room:state-update', (room) => {
-      setCurrentRoom(room);
+
+    socket.on('room:state-update', (state: RoomState) => {
+      setRoomState(state);
+      setView('GAME');
     });
+
+    socket.on('timer:tick', (time: number) => {
+      setTimer(time);
+    });
+
     return () => {
       socket.disconnect();
     };
   }, []);
 
-  const createRoom = () => {
-    if (!username) return alert('Please enter a username');
-    socket.emit('room:create', { username }, (res: any) => {
-      console.log('Room created:', res.roomCode);
+  const handleCreateRoom = () => {
+    if (!username.trim()) return setErrorMsg('Please enter a username!');
+    setErrorMsg('');
+    socket.emit('room:create', { username }, ({ roomCode }: { roomCode: string }) => {
+      console.log('Created room:', roomCode);
     });
   };
 
-  const joinRoom = () => {
-    if (!username || !roomCodeInput) return alert('Enter username and room code');
-    socket.emit('room:join', { roomCode: roomCodeInput, username }, (res: any) => {
-      if (!res.success) alert(res.message);
-    });
+  const handleJoinRoom = () => {
+    if (!username.trim()) return setErrorMsg('Please enter a username!');
+    if (!roomCodeInput.trim()) return setErrorMsg('Please enter a room code!');
+    setErrorMsg('');
+    socket.emit(
+      'room:join',
+      { roomCode: roomCodeInput, username },
+      (res: { success: boolean; message?: string }) => {
+        if (!res.success) setErrorMsg(res.message || 'Failed to join room');
+      }
+    );
   };
 
-  const startGame = () => {
+  const handleStartGame = () => {
     socket.emit('game:start');
   };
 
-  if (!currentRoom) {
-    return (
-      <main className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6">
-        <div className="bg-slate-900 border border-slate-800 p-8 rounded-2xl w-full max-w-md shadow-2xl flex flex-col gap-4">
-          <h1 className="text-3xl font-extrabold text-center bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
-            Scribbling.io
-          </h1>
+  const handleCanvasSubmit = (imageData: string) => {
+    socket.emit('drawing:submit', { imageData });
+  };
 
-          <input
-            type="text"
-            placeholder="Enter Username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 focus:outline-none focus:border-indigo-500"
-          />
-
-          <button
-            onClick={createRoom}
-            className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 font-bold rounded-xl transition-all shadow-lg shadow-indigo-600/30"
-          >
-            Create Room
-          </button>
-
-          <div className="flex items-center gap-2 my-2">
-            <div className="h-px bg-slate-800 flex-1" />
-            <span className="text-xs text-slate-500 uppercase">OR</span>
-            <div className="h-px bg-slate-800 flex-1" />
-          </div>
-
-          <input
-            type="text"
-            placeholder="Enter 6-Letter Room Code"
-            value={roomCodeInput}
-            onChange={(e) => setRoomCodeInput(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 focus:outline-none focus:border-indigo-500 uppercase"
-          />
-
-          <button
-            onClick={joinRoom}
-            className="w-full py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 font-bold rounded-xl transition-all"
-          >
-            Join Room
-          </button>
-        </div>
-      </main>
-    );
-  }
+  const handleVoteCast = (targetPlayerId: string) => {
+    socket.emit('vote:cast', { targetPlayerId });
+  };
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white p-6">
-      <header className="max-w-4xl mx-auto flex items-center justify-between bg-slate-900 p-4 rounded-2xl border border-slate-800 mb-6">
-        <div>
-          <span className="text-xs text-slate-400 uppercase font-bold">Room Code</span>
-          <h2 className="text-2xl font-black text-indigo-400">{currentRoom.code}</h2>
-        </div>
-        <div>
-          <span className="text-xs text-slate-400 uppercase font-bold">Phase</span>
-          <h2 className="text-lg font-bold">{currentRoom.phase}</h2>
-        </div>
-      </header>
+    <main className="h-screen w-screen bg-slate-950 text-white flex flex-col items-center justify-center p-4 overflow-hidden select-none">
+      {/* Dynamic Keyframes for Rainbow Animation */}
+      <style jsx global>{`
+        @keyframes rainbow {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        .rainbow-text {
+          background: linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3, #ff0000);
+          background-size: 400% 400%;
+          animation: rainbow 4s linear infinite;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+      `}</style>
 
-      {currentRoom.phase === 'LOBBY' && (
-        <div className="max-w-md mx-auto bg-slate-900 border border-slate-800 p-6 rounded-2xl text-center">
-          <h3 className="text-xl font-bold mb-4">Players Connected</h3>
-          <ul className="flex flex-col gap-2 mb-6">
-            {Object.values(currentRoom.players).map((p: any) => (
-              <li key={p.id} className="bg-slate-800 py-2 px-4 rounded-lg flex items-center justify-between">
-                <span>{p.username}</span>
-                {p.isHost && <span className="text-xs bg-indigo-500 px-2 py-0.5 rounded font-bold">HOST</span>}
-              </li>
-            ))}
-          </ul>
-          <button
-            onClick={startGame}
-            className="w-full py-3 bg-green-600 hover:bg-green-500 font-bold rounded-xl transition-all shadow-lg shadow-green-600/30"
+      {/* 1. LANDING VIEW (CENTERED) */}
+      {view === 'LANDING' && (
+        <div className="flex flex-col items-center justify-center gap-12 text-center my-auto">
+          {/* Rainbow Title with Webkit Text Stroke Outline */}
+          <h1
+            style={{ WebkitTextStroke: '2.5px black' }}
+            className={`${pixelFont.className} rainbow-text text-3xl sm:text-5xl md:text-6xl tracking-wider leading-relaxed px-4`}
           >
-            Start Game
+            scribbling.io
+          </h1>
+
+          {/* Grey Pixel PLAY Button with Black Outline */}
+          <button
+            onClick={() => setView('SETUP')}
+            style={{ WebkitTextStroke: '1.5px black' }}
+            className={`${pixelFont.className} bg-gray-400 hover:bg-gray-300 text-white text-xl sm:text-2xl px-12 py-5 rounded-md border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] active:translate-x-1 active:translate-y-1 active:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all cursor-pointer`}
+          >
+            PLAY
           </button>
         </div>
       )}
 
-      {currentRoom.phase === 'DRAWING' && (
-        <div className="text-center p-8 bg-slate-900 rounded-2xl border border-slate-800">
-          <h2 className="text-2xl font-bold text-indigo-400">Drawing Phase Active!</h2>
+      {/* 2. SETUP VIEW */}
+      {view === 'SETUP' && (
+        <div className="w-full max-w-md bg-gray-900 border-4 border-black p-6 rounded-2xl shadow-[8px_8px_0px_0px_rgba(0,0,0,0.8)] flex flex-col gap-6 my-auto">
+          <h2
+            style={{ WebkitTextStroke: '1px black' }}
+            className={`${pixelFont.className} text-xl text-center text-yellow-400`}
+          >
+            PLAYER LOBBY
+          </h2>
+
+          {errorMsg && (
+            <p className="text-red-400 text-xs text-center font-bold bg-red-950/50 py-2 rounded border border-red-800">
+              {errorMsg}
+            </p>
+          )}
+
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+              Enter Username
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. PixelArtist"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="bg-gray-800 border-2 border-gray-700 focus:border-indigo-500 text-white p-3 rounded-xl font-medium outline-none transition-colors"
+            />
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={handleCreateRoom}
+              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl shadow-lg transition-transform hover:scale-[1.02]"
+            >
+              Create New Room
+            </button>
+
+            <div className="relative flex py-2 items-center">
+              <div className="flex-grow border-t border-gray-800"></div>
+              <span className="flex-shrink mx-4 text-xs text-gray-500 font-bold">OR</span>
+              <div className="flex-grow border-t border-gray-800"></div>
+            </div>
+
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Room Code"
+                value={roomCodeInput}
+                onChange={(e) => setRoomCodeInput(e.target.value.toUpperCase())}
+                className="bg-gray-800 border-2 border-gray-700 focus:border-indigo-500 text-white p-3 rounded-xl font-medium outline-none w-full uppercase tracking-widest text-center"
+              />
+              <button
+                onClick={handleJoinRoom}
+                className="bg-gray-800 hover:bg-gray-700 text-white font-bold px-6 rounded-xl border border-gray-700"
+              >
+                Join
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. GAME PHASES */}
+      {view === 'GAME' && roomState && (
+        <div className="w-full max-w-6xl flex flex-col items-center overflow-y-auto max-h-screen py-6">
+          {/* Top Bar (Room Code + Timer + Theme) */}
+          <div className="w-full flex items-center justify-between bg-gray-900 border border-gray-800 px-6 py-4 rounded-2xl mb-6 shadow-lg">
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-bold text-gray-400 uppercase">Room:</span>
+              <span className="font-extrabold text-indigo-400 tracking-widest bg-indigo-950/60 px-3 py-1 rounded-lg border border-indigo-800/50">
+                {roomState.code}
+              </span>
+            </div>
+
+            {roomState.phase !== 'LOBBY' && (
+              <div className="flex items-center gap-2 bg-gray-800 px-4 py-1.5 rounded-full border border-gray-700">
+                <span className="text-xs font-bold text-gray-400">Time Left:</span>
+                <span className="font-extrabold text-yellow-400 text-lg">{timer}s</span>
+              </div>
+            )}
+
+            {roomState.theme && (
+              <div className="hidden sm:flex items-center gap-2">
+                <span className="text-xs font-bold text-gray-400 uppercase">Theme:</span>
+                <span className="font-bold text-yellow-300 bg-yellow-950/40 px-3 py-1 rounded-lg border border-yellow-800/50">
+                  {roomState.theme}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Phase A: LOBBY */}
+          {roomState.phase === 'LOBBY' && (
+            <div className="flex flex-col items-center gap-6 bg-gray-900 border border-gray-800 p-8 rounded-2xl w-full max-w-xl text-center shadow-xl">
+              <h2 className="text-2xl font-black text-white">Waiting for Players</h2>
+              <div className="w-full bg-gray-800/50 p-4 rounded-xl border border-gray-700/50 flex flex-col gap-2 max-h-60 overflow-y-auto">
+                {Object.values(roomState.players).map((p) => (
+                  <div
+                    key={p.id}
+                    className="flex items-center justify-between bg-gray-800 px-4 py-2 rounded-lg"
+                  >
+                    <span className="font-bold text-gray-200">{p.username}</span>
+                    {p.isHost && (
+                      <span className="text-[10px] font-extrabold bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded border border-yellow-500/30">
+                        HOST
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {roomState.players[socket.id]?.isHost ? (
+                <button
+                  onClick={handleStartGame}
+                  className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-extrabold rounded-xl shadow-lg transition-transform hover:scale-[1.02]"
+                >
+                  Start Game
+                </button>
+              ) : (
+                <p className="text-xs text-gray-400 font-medium">
+                  Waiting for host to start the game...
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Phase B: DRAWING */}
+          {roomState.phase === 'DRAWING' && (
+            <div className="flex flex-col items-center gap-4 w-full">
+              <div className="sm:hidden text-center bg-yellow-950/40 px-4 py-2 rounded-lg border border-yellow-800/50 mb-2">
+                <span className="text-xs font-bold text-gray-400">Theme: </span>
+                <span className="font-bold text-yellow-300">{roomState.theme}</span>
+              </div>
+              <Canvas onAutoSubmit={handleCanvasSubmit} isTimeUp={timer <= 0} />
+            </div>
+          )}
+
+          {/* Phase C: VOTING */}
+          {roomState.phase === 'VOTING' && (
+            <VotingGallery
+              drawings={roomState.drawings}
+              currentSocketId={socket.id}
+              onVote={handleVoteCast}
+            />
+          )}
+
+          {/* Phase D: RESULTS / PODIUM */}
+          {roomState.phase === 'RESULTS' && (
+            <Podium
+              players={roomState.players}
+              drawings={roomState.drawings}
+              votes={roomState.votes}
+              isHost={roomState.players[socket.id]?.isHost || false}
+              onPlayAgain={handleStartGame}
+            />
+          )}
         </div>
       )}
     </main>
