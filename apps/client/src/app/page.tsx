@@ -38,7 +38,7 @@ export default function Home() {
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-   socket = io('https://humble-dollop-g49v467vqwqxfw9w7-3000.app.github.dev', {
+   socket = io('https://humble-dollop-g49v467vqwqxfw9w7-4000.app.github.dev', {
   transports: ['websocket', 'polling'],
   reconnectionAttempts: 5,
 });
