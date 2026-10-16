@@ -1,5 +1,5 @@
-// @ts-expect-error CSS imports are handled by the framework bundler.
-import './globals.css'
+// @ts-expect-error CSS imports are handled by the app bundler.
+import '../components/globals.css'
 import type { ReactNode } from 'react'
 
 export const metadata = {
