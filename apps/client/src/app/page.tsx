@@ -10,12 +10,18 @@ interface RoomState {
   isHost: boolean;
 }
 
+const EMPTY_ROOM: RoomState = { roomId: null, players: [], isHost: false };
+
 export default function Home() {
+  // A ref keeps the socket for the lifetime of this component (instead of a module-level variable)
+  const socketRef = useRef<Socket | null>(null);
+
   const [isConnected, setIsConnected] = useState(false);
   const [username, setUsername] = useState('');
   const [inputRoomId, setInputRoomId] = useState('');
   const [room, setRoom] = useState<RoomState>({ roomId: null, players: [], isHost: false });
   const [errorMsg, setErrorMsg] = useState('');
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     // Initialize socket connection using your preferred global variable setup
@@ -23,6 +29,7 @@ export default function Home() {
       transports: ['websocket', 'polling'],
       reconnectionAttempts: 5,
     });
+    socketRef.current = socket;
 
     // Event listeners
     socket.on('connect', () => {
@@ -38,7 +45,7 @@ export default function Home() {
     });
 
     // Room functionality listeners
-    socket.on('room-created', ({ roomId, hostId }) => {
+    socket.on('room-created', ({ roomId, hostId }: { roomId: string; hostId: string }) => {
       setRoom(prev => ({ ...prev, roomId, isHost: socket.id === hostId }));
     });
 
@@ -53,6 +60,7 @@ export default function Home() {
     // Cleanup on unmount (prevents memory leaks and duplicate connections)
     return () => {
       socket.disconnect();
+      socketRef.current = null;
     };
   }, []);
 
@@ -99,6 +107,7 @@ export default function Home() {
                 Your Editor Name
               </label>
               <input
+                id="username"
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -126,6 +135,8 @@ export default function Home() {
                   type="text"
                   value={inputRoomId}
                   onChange={(e) => setInputRoomId(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleJoinRoom()}
+                  aria-label="Room code"
                   placeholder="Room Code"
                   className="w-2/3 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition uppercase"
                 />
