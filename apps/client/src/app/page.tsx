@@ -118,7 +118,7 @@ export default function Home() {
       
       {/* Absolute positioning keeps the header pinned to the top without pushing the menu off-center */}
       <div className="absolute top-6 flex items-center justify-between w-full max-w-5xl px-6">
-        <h1 className="text-xl font-black tracking-wider bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">
+        <h1 className="text-xl font-black tracking-wider bg-linear-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">
           SCRIBBLING.IO
         </h1>
         
@@ -171,9 +171,9 @@ export default function Home() {
               </button>
 
               <div className="relative flex py-2 items-center">
-                <div className="flex-grow border-t border-slate-800"></div>
-                <span className="flex-shrink mx-4 text-slate-600 text-xs font-semibold uppercase">Or Join</span>
-                <div className="flex-grow border-t border-slate-800"></div>
+                <div className="grow border-t border-slate-800"></div>
+                <span className="shrink mx-4 text-slate-600 text-xs font-semibold uppercase">Or Join</span>
+                <div className="grow border-t border-slate-800"></div>
               </div>
 
               <div className="flex gap-2">
