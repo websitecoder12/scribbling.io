@@ -1,0 +1,9 @@
+{
+  "name": "scribbling-io",
+  "portsAttributes": {
+    "4000": {
+      "label": "Socket Backend",
+      "visibility": "public"
+    }
+  }
+}
